@@ -440,7 +440,9 @@ def checkTableExists(dbcon):
     print(tables[0][0])
     return(len(tables))
     
-#creating new database that will contain our preprocessed data     
+#creating new database that will contain our preprocessed data 
+#here we are calling above made functions such as create_connection to create database connection , create_table to create a new table and then checktableexists checks 
+#if the table created exists or not
 def create_database_table(database, query):
     conn = create_connection(database)
     if conn is not None:
@@ -452,3 +454,99 @@ def create_database_table(database, query):
 
 sql_create_table = """CREATE TABLE IF NOT EXISTS QuestionsProcessed (question text NOT NULL, code text, tags text, words_pre integer, words_post integer, is_code integer);"""
 create_database_table("Processed.db", sql_create_table)
+```
+
+```python
+# http://www.sqlitetutorial.net/sqlite-delete/
+# https://stackoverflow.com/questions/2279706/select-random-row-from-a-sqlite-table
+
+# here we are first .db file  as read and write . read file stores output of sql query which randomly picks i million data points from no_dup_train table
+#and write file basically holds an empty file in which preprocessed questions that we will preprocess going forward will be kept.
+
+start = datetime.now()
+read_db = 'train_no_dup.db'
+write_db = 'Processed.db'
+if os.path.isfile(read_db):
+    conn_r = create_connection(read_db)
+    if conn_r is not None:
+        reader =conn_r.cursor()
+        reader.execute("SELECT Title, Body, Tags From no_dup_train ORDER BY RANDOM() LIMIT 1000000;")
+
+if os.path.isfile(write_db):
+    conn_w = create_connection(write_db)
+    if conn_w is not None:
+        tables = checkTableExists(conn_w)
+        writer =conn_w.cursor()
+        if tables != 0:
+            writer.execute("DELETE FROM QuestionsProcessed WHERE 1")
+            print("Cleared All the rows")
+print("Time taken to run this cell :", datetime.now() - start)
+```
+
+Lets preprocess the data 
+
+```python
+#http://www.bernzilla.com/2008/05/13/selecting-a-random-row-from-an-sqlite-table/
+
+start = datetime.now()
+preprocessed_data_list=[]
+reader.fetchone()
+questions_with_code=0
+len_pre=0
+len_post=0
+questions_proccesed = 0
+for row in reader:
+
+    is_code = 0
+
+    title, question, tags = row[0], row[1], row[2]
+
+    if '<code>' in question:
+        questions_with_code+=1
+        is_code = 1
+    x = len(question)+len(title)
+    len_pre+=x
+# here we are finding code part in question 
+    code = str(re.findall(r'<code>(.*?)</code>', question, flags=re.DOTALL))
+# replacing that code part with space 
+    question=re.sub('<code>(.*?)</code>', '', question, flags=re.MULTILINE|re.DOTALL)
+    question=striphtml(question.encode('utf-8'))
+
+    title=title.encode('utf-8')
+#question is combination of title and question with coe part removed 
+    question=str(title)+" "+str(question)
+#further it replaces anything apart from a-z upper or lowecase with space 
+    question=re.sub(r'[^A-Za-z]+',' ',question)
+    #this will tokenize a questiion that means breaking question on basis of space converting it in tokens
+    words=word_tokenize(str(question.lower()))
+
+    #Removing all single letter and and stopwords from question exceptt for the letter 'c' as c is language and can be atag
+    # secondly its doing stemming of words aswell
+    question=' '.join(str(stemmer.stem(j)) for j in words if j not in stop_words and (len(j)!=1 or j=='c'))
+
+    len_post+=len(question)
+    # here we are creating a tuple as tup having all the values needed to be added in processed file 
+    tup = (question,code,tags,x,len(question),is_code)
+    questions_proccesed += 1
+    writer.execute("insert into QuestionsProcessed(question,code,tags,words_pre,words_post,is_code) values (?,?,?,?,?,?)",tup)
+    if (questions_proccesed%100000==0):
+        print("number of questions completed=",questions_proccesed)
+
+no_dup_avg_len_pre=(len_pre*1.0)/questions_proccesed
+no_dup_avg_len_post=(len_post*1.0)/questions_proccesed
+
+print( "Avg. length of questions(Title+Body) before processing: %d"%no_dup_avg_len_pre)
+print( "Avg. length of questions(Title+Body) after processing: %d"%no_dup_avg_len_post)
+print ("Percent of questions containing code: %d"%((questions_with_code*100.0)/questions_proccesed))
+
+print("Time taken to run this cell :", datetime.now() - start)
+```
+
+```python
+# dont forget to close the connections, or else you will end up with locks
+conn_r.commit()
+conn_w.commit()
+conn_r.close()
+conn_w.close()
+```
+
