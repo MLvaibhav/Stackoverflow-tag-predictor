@@ -550,3 +550,25 @@ conn_r.close()
 conn_w.close()
 ```
 
+```python
+#Taking 1 Million entries to a dataframe.
+write_db = 'Processed.db'
+if os.path.isfile(write_db):
+    conn_r = create_connection(write_db)
+    if conn_r is not None:
+        preprocessed_data = pd.read_sql_query("""SELECT question, Tags FROM QuestionsProcessed""", conn_r)
+conn_r.commit()
+conn_r.close()
+```
+```python
+preprocessed_data.head()
+
+	question	                                        tags
+0	resiz root window tkinter resiz root window re...	python tkinter
+1	ef code first defin one mani relationship diff...	entity-framework-4.1
+2	explan new statement review section c code cam...	c++
+3	error function notat function solv logic riddl...	haskell logic
+4	step plan move one isp anoth one work busi pla...	dns isp
+
+```
+
