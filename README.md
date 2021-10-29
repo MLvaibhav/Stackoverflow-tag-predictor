@@ -451,7 +451,7 @@ def create_database_table(database, query):
     else:
         print("Error! cannot create the database connection.")
     conn.close()
-
+# this query in sql_create_table creates a table named QuestionsProcessed with following values 
 sql_create_table = """CREATE TABLE IF NOT EXISTS QuestionsProcessed (question text NOT NULL, code text, tags text, words_pre integer, words_post integer, is_code integer);"""
 create_database_table("Processed.db", sql_create_table)
 ```
@@ -460,8 +460,7 @@ create_database_table("Processed.db", sql_create_table)
 # http://www.sqlitetutorial.net/sqlite-delete/
 # https://stackoverflow.com/questions/2279706/select-random-row-from-a-sqlite-table
 
-# here we are first .db file  as read and write . read file stores output of sql query which randomly picks i million data points from no_dup_train table
-#and write file basically holds an empty file in which preprocessed questions that we will preprocess going forward will be kept.
+# here we are first .db file  as read and write . read file stores output of sql query which randomly picks i million data points from no_dup_train table.
 
 start = datetime.now()
 read_db = 'train_no_dup.db'
@@ -471,7 +470,8 @@ if os.path.isfile(read_db):
     if conn_r is not None:
         reader =conn_r.cursor()
         reader.execute("SELECT Title, Body, Tags From no_dup_train ORDER BY RANDOM() LIMIT 1000000;")
-
+	
+# And After reading all the files, we are deleting all the rows 
 if os.path.isfile(write_db):
     conn_w = create_connection(write_db)
     if conn_w is not None:
@@ -570,5 +570,28 @@ preprocessed_data.head()
 3	error function notat function solv logic riddl...	haskell logic
 4	step plan move one isp anoth one work busi pla...	dns isp
 
+```
+
+Machine Learning Models
+
+So there are many ways to handle multi label classification problem we are using most basic one called as Binary relevance 
+
+This is the simplest technique, which basically treats each label as a separate single class classification problem.
+
+for all other techniques refer:
+
+https://www.analyticsvidhya.com/blog/2017/08/introduction-to-multi-label-classification/
+
+
+ Converting tags for multilabel problems 
+X	y1	y2	y3	y4
+x1	0	1	1	0
+x1	1	0	0	0
+x1	0	1	0	0
+
+```python
+# binary='true' will give a binary vectorizer
+vectorizer = CountVectorizer(tokenizer = lambda x: x.split(), binary='true')
+multilabel_y = vectorizer.fit_transform(preprocessed_data['tags'])
 ```
 
